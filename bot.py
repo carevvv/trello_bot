@@ -9,7 +9,16 @@ import json
 import time
 from trello import trello_wrapper
 from datetime import datetime, timedelta
+from flask import Flask, request, abort
 from configuration.config import API_KEY, TOKEN, board_id, ADMIN
+
+
+app = Flask(__name__)
+bot = telebot.TeleBot(TG_TOKEN)
+
+bot_messages = {}
+
+
 
 def is_valid_telegram_id(tg_id):
     try:
@@ -119,7 +128,7 @@ def check_for_updates(old_board_info, new_board_info):
                 if old_projs:
                     old_proj = old_projs.get(title, {})
                 else:
-                    old_proj = []
+                    old_proj = {}
                 if not old_proj:
                     if new_proj['status'] == 'В работе' and new_proj['deadline']:
                         add_notification(user_id, title)
@@ -129,7 +138,6 @@ def check_for_updates(old_board_info, new_board_info):
                 else:
                     new_deadline = datetime.strptime(new_proj['deadline'], '%Y-%m-%d %H:%M:%S') if new_proj['deadline'] else None
                     old_deadline = datetime.strptime(old_proj['deadline'], '%Y-%m-%d %H:%M:%S') if old_proj.get('deadline') else None
-
                     del_deadline = False
                     add_deadline = False
 
@@ -173,14 +181,14 @@ def check_for_updates(old_board_info, new_board_info):
                     if add_deadline and not del_deadline:
                         add_notification(user_id, title)
                     
-                    old_comments = set(tuple(comment) for comment in old_proj.get('comments', []))
-                    new_comments = set(tuple(comment) for comment in new_proj.get('comments', []))
+                    old_comments = set(tuple(comment) for comment in old_proj.get('comments') or [])
+                    new_comments = set(tuple(comment) for comment in new_proj.get('comments') or [])
                     added_comments = new_comments - old_comments
                     if added_comments:
                         message = f"Новые комментарии в проекте <b>{title}</b>:\n\n" + "<br>".join(f'{comment[0]}({comment[2]}): {comment[1]}' for comment in added_comments)
                         send_telegram_message(user_id, message, parse_mode='HTML')
 
-                    if old_proj['description'] != new_proj['description']:
+                    if old_proj.get('description') != new_proj.get('description'):
                         message = f"Изменено описание проекта <b>{title}</b>:\n\n{new_proj['description']}"
                         send_telegram_message(user_id, message, parse_mode='HTML')
     except Exception as e:
@@ -227,11 +235,6 @@ def start_thread():
     task_thread.start()
 
 
-
-bot = telebot.TeleBot(TG_TOKEN)
-
-bot_messages = {}
-
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -267,7 +270,9 @@ def handle_projects(message):
     try:
         projects = Projects.select().where(Projects.tg_id == tg_id)
         if projects.count() == 0:
-            raise ValueError("У вас пока нет проектов.")
+            reply = bot.send_message(chat_id, "У вас нет проектов.")
+            store_bot_message(chat_id, reply.message_id)
+            return
             
         for project in projects:
             project_info = (
@@ -362,8 +367,9 @@ def show_comments(query):
             reply = bot.send_message(chat_id, "Комментариев нет.")
             store_bot_message(chat_id, reply.message_id)
         else:
-            comments = json.loads(comments)
-            reply = bot.send_message(chat_id, f"<u><b>Комментарии</b></u>:\n\n{'\n\n'.join([f"{i[0]}({i[2]}): {i[1]}" for i in comments])}",  parse_mode='HTML')
+            comments_str = '\n\n'.join([f"{i[0]}({i[2]}): {i[1]}" for i in comments])
+
+            reply = bot.send_message(chat_id, f"<u><b>Комментарии</b></u>:\n\n{comments_str}", parse_mode='HTML')
             store_bot_message(chat_id, reply.message_id)
 
     except Projects.DoesNotExist:
@@ -371,5 +377,18 @@ def show_comments(query):
 
 
 
-start_thread()
-bot.polling(none_stop=True)
+@app.route('/WEBHOOK_PATH', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data(as_text=True)
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    else:
+        abort(403)
+
+
+if __name__ == "__main__":
+    background_thread = threading.Thread(target=perform_regular_task, daemon=True)
+    background_thread.start()
+    app.run(host="0.0.0.0", port=int("8080"), debug=True)

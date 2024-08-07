@@ -1,4 +1,3 @@
-import requests
 import datetime
 import concurrent.futures
 import requests
