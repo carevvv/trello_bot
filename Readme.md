@@ -1,42 +1,37 @@
-**# TrelloBot**
+# TrelloBot
 
-**Проект TrelloBot — интеграция Trello с Telegram!**
+The TrelloBot project integrates Trello with Telegram!
 
-**## Основные возможности:**
+## Key Features:
 
-1. **🔔 Уведомления для руководителей:**
-   - Получайте уведомления, когда сотрудник **выполнил задачу**.
-   - Узнавайте, когда **оставлен комментарий**.
-   - Будьте в курсе, когда **перенесён дедлайн карточки**.
+1. 🔔 Notifications for Managers:
+   - Receive notifications when an employee completes a task.
+   - Be informed when a comment is left.
+   - Stay updated when a card's deadline is rescheduled.
 
-2. **👥 Ограниченный доступ для сотрудников:**
-   - Сотрудники получат доступ **только к функционалу бота**.
-   - **Без просмотра всей остальной таблицы Trello** и **чужих задач**.
+2. 👥 Restricted Access for Employees:
+   - Employees will have access only to the bot's functionality.
+   - No access to the rest of the Trello board and others' tasks.
 
 ---
 
-**## Запуск проекта:**
+## Project Setup:
 
-1. **Клонировать проект**:
-    ```
-      git clone https://github.com/carevvv/trello_bot
-    ```
-
-2. **Вебхуки:**
-   - Бот работает на вебхуках, для запуска потребуется **свой вебсервер**.
-
-3. **Скачать зависимости**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. **Создать базу данных и запустить скрипт создания БД**:
-    ```bash
-    python creaete_tables.py
-    ```
-
-4. **Запустить файл**:
+1. Clone the project:
     
-    ```bash
-    python bot.py
-    ```
+      git clone https://github.com/carevvv/trello_bot
+
+2. Webhooks:
+   - The bot works with webhooks, requiring a personal web server for setup.
+
+3. Install dependencies:
+   
+        pip install -r requirements.txt
+
+5. Create a database and run the database creation script:
+    
+        python create_tables.py
+
+6. Run the file:
+    
+        python bot.py
